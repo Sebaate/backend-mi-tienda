@@ -1,29 +1,36 @@
 const express = require('express');
 const cors = require('cors');
+const { MongoClient } = require('mongodb');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Datos en memoria
-let productos = [
-  { nombre: "Producto de ejemplo", precio: 100 }
-];
+const uri = "mongodb+srv://admin:<db_password>@cluster0.jfkhlim.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"; // pega tu URI de MongoDB Atlas aquí
+const client = new MongoClient(uri);
 
-// Configuración
 app.use(cors());
 app.use(express.json());
 
-// Rutas
-app.get('/productos', (req, res) => {
-  res.json(productos);
+app.get('/productos', async (req, res) => {
+  try {
+    await client.connect();
+    const productos = await client.db("tienda").collection("productos").find().toArray();
+    res.json(productos);
+  } catch (e) {
+    res.status(500).json({ error: 'Error al obtener productos' });
+  }
 });
 
-app.post('/productos', (req, res) => {
-  const { nombre, precio } = req.body;
-  productos.push({ nombre, precio });
-  res.status(201).json({ mensaje: 'Producto agregado' });
+app.post('/productos', async (req, res) => {
+  try {
+    const { nombre, precio } = req.body;
+    await client.connect();
+    await client.db("tienda").collection("productos").insertOne({ nombre, precio });
+    res.status(201).json({ mensaje: 'Producto guardado' });
+  } catch (e) {
+    res.status(500).json({ error: 'Error al guardar producto' });
+  }
 });
 
-// Inicio del servidor
 app.listen(PORT, () => {
-  console.log(`Servidor funcionando en el puerto ${PORT}`);
+  console.log(`Servidor corriendo en puerto ${PORT}`);
 });
